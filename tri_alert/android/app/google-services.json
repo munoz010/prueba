@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "319053638103",
+    "project_id": "trialert-cd1cd",
+    "storage_bucket": "trialert-cd1cd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:319053638103:android:82f5ea0b115a781d530392",
+        "android_client_info": {
+          "package_name": "com.example.tri_alert"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdnhFc0VMOd3SnOIaCybeINRxM5-zyMhQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
