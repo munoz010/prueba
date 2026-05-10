@@ -3,147 +3,89 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 
 class AuthService {
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // Stream del estado de autenticación
   Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  // Usuario actual
   User? get currentUser => _auth.currentUser;
 
-  // =========================
-  // LOGIN CON EMAIL
-  // =========================
-  Future<UserModel?> signInWithEmail({
+  // ── LOGIN ──────────────────────────────────────────────────────────
+  Future<UserModel?> signIn({
     required String email,
     required String password,
   }) async {
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
+      final cred = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
-        password: password.trim(),
+        password: password,
       );
-
-      final user = credential.user;
-
-      if (user == null) return null;
-
+      final u = cred.user!;
+      final doc = await _db.collection('users').doc(u.uid).get();
+      if (doc.exists) {
+        return UserModel.fromMap(doc.data()!, u.uid);
+      }
       return UserModel(
-        uid: user.uid,
-        email: user.email ?? '',
-        displayName: user.displayName ?? '',
-      );
+          uid: u.uid, email: u.email!, firstName: '', lastName: '');
     } on FirebaseAuthException catch (e) {
-      throw Exception(_handleAuthException(e));
-    } catch (e) {
-      throw Exception('Error inesperado: $e');
+      throw _mapError(e);
     }
   }
 
-  // =========================
-  // REGISTRO CON EMAIL
-  // =========================
-  Future<UserModel?> registerWithEmail({
+  // ── REGISTRO ───────────────────────────────────────────────────────
+  Future<UserModel?> register({
     required String email,
     required String password,
-    required String displayName,
+    required String firstName,
+    required String lastName,
   }) async {
     try {
-      final credential = await _auth.createUserWithEmailAndPassword(
+      final cred = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
-        password: password.trim(),
+        password: password,
       );
+      final u = cred.user!;
+      await u.updateDisplayName('$firstName $lastName');
 
-      final user = credential.user;
-
-      if (user == null) return null;
-
-      // Actualizar nombre
-      await user.updateDisplayName(displayName);
-
-      // Recargar usuario
-      await user.reload();
-
-      final updatedUser = _auth.currentUser;
-
-      // Crear modelo
-      final newUser = UserModel(
-        uid: updatedUser!.uid,
-        email: updatedUser.email ?? '',
-        displayName: updatedUser.displayName ?? '',
+      final model = UserModel(
+        uid: u.uid,
+        email: u.email!,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
       );
-
-      // Guardar en Firestore
-      await _firestore.collection('users').doc(updatedUser.uid).set(
-            newUser.toMap(),
-          );
-
-      return newUser;
+      await _db.collection('users').doc(u.uid).set(model.toMap());
+      return model;
     } on FirebaseAuthException catch (e) {
-      throw Exception(_handleAuthException(e));
-    } catch (e) {
-      throw Exception('Error inesperado: $e');
+      throw _mapError(e);
     }
   }
 
-  // =========================
-  // RECUPERAR CONTRASEÑA
-  // =========================
-  Future<void> sendPasswordResetEmail(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(
-        email: email.trim(),
-      );
-    } on FirebaseAuthException catch (e) {
-      throw Exception(_handleAuthException(e));
-    } catch (e) {
-      throw Exception('Error inesperado: $e');
-    }
-  }
+  // ── CERRAR SESIÓN ──────────────────────────────────────────────────
+  Future<void> signOut() => _auth.signOut();
 
-  // =========================
-  // CERRAR SESIÓN
-  // =========================
-  Future<void> signOut() async {
-    try {
-      await _auth.signOut();
-    } catch (e) {
-      throw Exception('Error al cerrar sesión: $e');
-    }
-  }
-
-  // =========================
-  // MANEJO DE ERRORES
-  // =========================
-  String _handleAuthException(FirebaseAuthException e) {
+  // ── MAPEO DE ERRORES ───────────────────────────────────────────────
+  String _mapError(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
         return 'No existe una cuenta con ese correo.';
-
       case 'wrong-password':
-        return 'Contraseña incorrecta.';
-
-      case 'email-already-in-use':
-        return 'Este correo ya está registrado.';
-
-      case 'invalid-email':
-        return 'El correo no es válido.';
-
-      case 'weak-password':
-        return 'La contraseña debe tener al menos 6 caracteres.';
-
-      case 'too-many-requests':
-        return 'Demasiados intentos. Inténtalo más tarde.';
-
-      case 'network-request-failed':
-        return 'Sin conexión a internet.';
-
       case 'invalid-credential':
         return 'Correo o contraseña incorrectos.';
-
+      case 'email-already-in-use':
+        return 'Este correo ya está registrado.';
+      case 'invalid-email':
+        return 'El correo no es válido.';
+      case 'weak-password':
+        return 'La contraseña debe tener al menos 6 caracteres.';
+      case 'too-many-requests':
+        return 'Demasiados intentos. Inténtalo más tarde.';
+      case 'network-request-failed':
+        return 'Sin conexión a internet.';
       default:
-        return e.message ?? 'Ocurrió un error de autenticación.';
+        return 'Error: ${e.message}';
     }
   }
 }

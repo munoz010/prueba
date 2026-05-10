@@ -1,61 +1,97 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
+import '../widgets/tri_alert_logo.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final authService = AuthService();
-    final user = authService.currentUser;
+    final user = AuthService().currentUser;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'TriAlert',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(0, -0.3),
+            radius: 1.2,
+            colors: [
+              Color(0xFF0D2B6B),
+              Color(0xFF071640),
+              Color(0xFF030D24),
+            ],
           ),
         ),
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.primary),
-            tooltip: 'Cerrar sesión',
-            onPressed: () async {
-              await authService.signOut();
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              size: 64,
-              color: AppColors.primary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Bienvenido, ${user?.displayName ?? user?.email ?? 'Usuario'}',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // AppBar manual
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    const Spacer(),
+                    const Text(
+                      'TriAlert',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.logout,
+                          color: Colors.white70, size: 22),
+                      onPressed: () async {
+                        await AuthService().signOut();
+                        if (context.mounted) {
+                          Navigator.pushNamedAndRemoveUntil(
+                              context, '/', (_) => false);
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Estás autenticado correctamente.',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ],
+
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const TriAlertLogo(size: 140),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Bienvenido,',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      user?.displayName ?? user?.email ?? 'Usuario',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      user?.email ?? '',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

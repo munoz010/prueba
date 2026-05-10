@@ -1,30 +1,30 @@
 class UserModel {
   final String uid;
   final String email;
-  final String? displayName;
-  final String? photoUrl;
+  final String firstName;
+  final String lastName;
 
   const UserModel({
     required this.uid,
     required this.email,
-    this.displayName,
-    this.photoUrl,
+    required this.firstName,
+    required this.lastName,
   });
+
+  String get fullName => '$firstName $lastName';
 
   factory UserModel.fromMap(Map<String, dynamic> map, String uid) {
     return UserModel(
       uid: uid,
       email: map['email'] ?? '',
-      displayName: map['displayName'],
-      photoUrl: map['photoUrl'],
+      firstName: map['firstName'] ?? '',
+      lastName: map['lastName'] ?? '',
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'email': email,
-      'displayName': displayName,
-      'photoUrl': photoUrl,
-    };
-  }
+  Map<String, dynamic> toMap() => {
+        'email': email,
+        'firstName': firstName,
+        'lastName': lastName,
+      };
 }

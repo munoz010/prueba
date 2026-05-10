@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'services/auth_service.dart';
-import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
-import 'utils/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,47 +20,36 @@ class TriAlertApp extends StatelessWidget {
       title: 'TriAlert',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          primary: AppColors.primary,
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE53935)),
         useMaterial3: true,
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: AppColors.background,
       ),
       home: const AuthWrapper(),
     );
   }
 }
 
-/// Decide si mostrar Login o Home según el estado de autenticación
+/// Si el usuario ya tiene sesión activa → HomeScreen
+/// Si no → SplashScreen (con los botones de login/registro)
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final authService = AuthService();
-
     return StreamBuilder<User?>(
-      stream: authService.authStateChanges,
+      stream: AuthService().authStateChanges,
       builder: (context, snapshot) {
-        // Cargando estado inicial
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            backgroundColor: AppColors.background,
+            backgroundColor: Color(0xFF030D24),
             body: Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
+              child: CircularProgressIndicator(color: Color(0xFFE53935)),
             ),
           );
         }
-
-        // Usuario autenticado → Home
         if (snapshot.hasData && snapshot.data != null) {
           return const HomeScreen();
         }
-
-        // No autenticado → Login
-        return const LoginScreen();
+        return const SplashScreen();
       },
     );
   }
