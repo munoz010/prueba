@@ -32,6 +32,24 @@ class _AuthScreenState extends State<AuthScreen> {
 
   bool _isLoading = false;
 
+  // ── ESTADO DE ALERTAS ──────────────────────────────────────────────
+  // tipo: 'error' | 'warning' | 'success' | null
+  String? _alertType;
+  String? _alertMessage;
+
+  void _showAlert(String type, String message) {
+    setState(() {
+      _alertType = type;
+      _alertMessage = message;
+    });
+    // Auto-ocultar después de 3 segundos
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) setState(() { _alertType = null; _alertMessage = null; });
+    });
+  }
+
+  void _clearAlert() => setState(() { _alertType = null; _alertMessage = null; });
+
   @override
   void initState() {
     super.initState();
@@ -51,7 +69,16 @@ class _AuthScreenState extends State<AuthScreen> {
 
   // ── ACCIONES ───────────────────────────────────────────────────────
   Future<void> _login() async {
+    _clearAlert();
+
+    // Campos vacíos → alerta amarilla
+    if (_loginEmail.text.trim().isEmpty || _loginPassword.text.isEmpty) {
+      _showAlert('warning', 'Faltan campos por llenar');
+      return;
+    }
+
     if (!_loginFormKey.currentState!.validate()) return;
+
     setState(() => _isLoading = true);
     try {
       await _authService.signIn(
@@ -65,15 +92,28 @@ class _AuthScreenState extends State<AuthScreen> {
           (_) => false,
         );
       }
-    } catch (e) {
-      _showError(e.toString());
+    } catch (_) {
+      // Credenciales incorrectas → alerta roja
+      _showAlert('error', 'G.mail/Contraseña incorrectos');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _register() async {
+    _clearAlert();
+
+    // Campos vacíos → alerta amarilla
+    if (_regFirstName.text.trim().isEmpty ||
+        _regLastName.text.trim().isEmpty ||
+        _regEmail.text.trim().isEmpty ||
+        _regPassword.text.isEmpty) {
+      _showAlert('warning', 'Faltan campos por llenar');
+      return;
+    }
+
     if (!_regFormKey.currentState!.validate()) return;
+
     setState(() => _isLoading = true);
     try {
       await _authService.register(
@@ -83,28 +123,22 @@ class _AuthScreenState extends State<AuthScreen> {
         lastName: _regLastName.text,
       );
       if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-          (_) => false,
-        );
+        // Registro exitoso → alerta verde, luego navega
+        _showAlert('success', 'Registrado con éxitó');
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (_) => false,
+          );
+        }
       }
-    } catch (e) {
-      _showError(e.toString());
+    } catch (_) {
+      _showAlert('error', 'Error al registrarse. Intenta de nuevo.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
   }
 
   // ── BUILD ──────────────────────────────────────────────────────────
@@ -143,7 +177,18 @@ class _AuthScreenState extends State<AuthScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        TriAlertLogo(size: size.width * 0.42),
+                        // ── BANNER DE ALERTA ──────────────────
+                        if (_alertType != null)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 8),
+                            child: _buildAlertBanner(),
+                          ),
+                        Expanded(
+                          child: Center(
+                            child: TriAlertLogo(size: size.width * 0.42),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -197,6 +242,71 @@ class _AuthScreenState extends State<AuthScreen> {
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.arrow_back,
                       color: AppColors.textSecondary),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── WIDGET: BANNER DE ALERTA ───────────────────────────────────────
+  Widget _buildAlertBanner() {
+    // Colores y icono según tipo
+    final Color bgColor;
+    final Color borderColor;
+    final Color textColor;
+    final IconData icon;
+
+    switch (_alertType) {
+      case 'error':
+        bgColor     = const Color(0xFFD32F2F);
+        borderColor = const Color(0xFFB71C1C);
+        textColor   = Colors.white;
+        icon        = Icons.error_outline;
+        break;
+      case 'warning':
+        bgColor     = const Color(0xFF795B00);
+        borderColor = const Color(0xFFF9A825);
+        textColor   = Colors.white;
+        icon        = Icons.warning_amber_rounded;
+        break;
+      case 'success':
+        bgColor     = const Color(0xFF1B5E20);
+        borderColor = const Color(0xFF2E7D32);
+        textColor   = Colors.white;
+        icon        = Icons.check_circle_outline;
+        break;
+      default:
+        bgColor     = Colors.grey;
+        borderColor = Colors.grey;
+        textColor   = Colors.white;
+        icon        = Icons.info_outline;
+    }
+
+    return AnimatedOpacity(
+      opacity: _alertType != null ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 300),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor, width: 1.2),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: textColor, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _alertMessage ?? '',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
