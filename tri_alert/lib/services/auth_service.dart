@@ -13,30 +13,30 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
 
-  // ── LOGIN ──────────────────────────────────────────────────────────
-  Future<UserModel?> signIn({
+  // ── LOGIN ───────────────────────────────────────────────────────────
+  // Solo autentica con Firebase Auth — NO consulta Firestore.
+  // El AuthWrapper detecta el cambio de sesión y navega al home.
+  Future<void> signIn({
     required String email,
     required String password,
   }) async {
     try {
-      final cred = await _auth.signInWithEmailAndPassword(
+      await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
-      final u = cred.user!;
-      final doc = await _db.collection('users').doc(u.uid).get();
-      if (doc.exists) {
-        return UserModel.fromMap(doc.data()!, u.uid);
-      }
-      return UserModel(
-          uid: u.uid, email: u.email!, firstName: '', lastName: '');
+      // ✅ Listo — Firebase Auth emite el evento en authStateChanges
+      // y el AuthWrapper navega automáticamente al MainShell.
     } on FirebaseAuthException catch (e) {
       throw _mapError(e);
+    } catch (e) {
+      throw 'Error inesperado: $e';
     }
   }
 
-  // ── REGISTRO ───────────────────────────────────────────────────────
-  Future<UserModel?> register({
+  // ── REGISTRO ────────────────────────────────────────────────────────
+  // Crea el usuario en Auth y guarda el perfil en Firestore.
+  Future<void> register({
     required String email,
     required String password,
     required String firstName,
@@ -48,32 +48,41 @@ class AuthService {
         password: password,
       );
       final u = cred.user!;
+
+      // Actualizar displayName en Firebase Auth
       await u.updateDisplayName('$firstName $lastName');
 
+      // Guardar perfil en Firestore (no bloquea la navegación)
       final model = UserModel(
         uid: u.uid,
         email: u.email!,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
       );
-      await _db.collection('users').doc(u.uid).set(model.toMap());
-      return model;
+      // Guardamos en background — si falla Firestore el usuario
+      // igual queda autenticado
+      _db.collection('users').doc(u.uid).set(model.toMap()).catchError(
+        (e) => print('Firestore error (no crítico): $e'),
+      );
+      // ✅ Firebase Auth emite el evento — AuthWrapper navega al home
     } on FirebaseAuthException catch (e) {
       throw _mapError(e);
+    } catch (e) {
+      throw 'Error inesperado: $e';
     }
   }
 
-  // ── CERRAR SESIÓN ──────────────────────────────────────────────────
+  // ── CERRAR SESIÓN ───────────────────────────────────────────────────
   Future<void> signOut() => _auth.signOut();
 
-  // ── MAPEO DE ERRORES ───────────────────────────────────────────────
+  // ── MAPEO DE ERRORES ────────────────────────────────────────────────
   String _mapError(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
         return 'No existe una cuenta con ese correo.';
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Correo o contraseña incorrectos.';
+        return 'G.mail/Contraseña incorrectos';
       case 'email-already-in-use':
         return 'Este correo ya está registrado.';
       case 'invalid-email':
