@@ -526,6 +526,7 @@ class _AuthScreenState extends State<AuthScreen> {
   // ── FORGOT PASSWORD ────────────────────────────────────────────────
   void _showForgotPassword() {
     final emailCtrl = TextEditingController();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -533,68 +534,167 @@ class _AuthScreenState extends State<AuthScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+      builder: (ctx) => _ForgotPasswordSheet(
+        emailCtrl: emailCtrl,
+        authService: _authService,
+      ),
+    );
+  }
+}
+
+// ── HOJA DE RECUPERAR CONTRASEÑA (StatefulWidget para manejar loading) ──
+class _ForgotPasswordSheet extends StatefulWidget {
+  final TextEditingController emailCtrl;
+  final AuthService authService;
+
+  const _ForgotPasswordSheet({
+    required this.emailCtrl,
+    required this.authService,
+  });
+
+  @override
+  State<_ForgotPasswordSheet> createState() => _ForgotPasswordSheetState();
+}
+
+class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
+  bool _sending  = false;
+  bool _enviado  = false;
+  String? _error;
+
+  Future<void> _enviar() async {
+    final email = widget.emailCtrl.text.trim();
+
+    if (email.isEmpty) {
+      setState(() => _error = 'Ingresa tu correo.');
+      return;
+    }
+
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      setState(() => _error = 'Ingresa un correo válido.');
+      return;
+    }
+
+    setState(() { _sending = true; _error = null; });
+
+    try {
+      // ✅ Llama al método correcto de Firebase
+      await widget.authService.sendPasswordResetEmail(email);
+      if (mounted) setState(() { _enviado = true; _sending = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _sending = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24, right: 24, top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Recuperar contraseña',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Recuperar contraseña',
-                style: TextStyle(
-                  fontSize: 18,
+          const SizedBox(height: 8),
+
+          // ── Vista después de enviar ──────────────────────────────
+          if (_enviado) ...[
+            const SizedBox(height: 16),
+            const Icon(Icons.mark_email_read_outlined,
+                color: Colors.green, size: 48),
+            const SizedBox(height: 12),
+            const Text(
+              '¡Correo enviado!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Revisa tu bandeja de entrada en\n${widget.emailCtrl.text.trim()}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text('Cerrar',
+                  style: TextStyle(color: Colors.white, fontSize: 15)),
+            ),
+          ] else ...[
+            // ── Vista del formulario ─────────────────────────────
+            const Text(
+              'Te enviaremos un enlace a tu correo para restablecer tu contraseña.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+
+            // Error
+            if (_error != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                child: Text(_error!,
+                    style: const TextStyle(
+                        color: AppColors.error, fontSize: 13)),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Te enviaremos un enlace a tu correo para restablecer tu contraseña.',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-              ),
-              const SizedBox(height: 20),
-              CustomInput(
-                controller: emailCtrl,
-                hint: 'G-mail',
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  if (emailCtrl.text.trim().isNotEmpty) {
-                    try {
-                      await _authService.signIn(
-                          email: emailCtrl.text, password: '');
-                    } catch (_) {}
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Enlace enviado. Revisa tu correo.'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: const Text('Enviar enlace',
-                    style: TextStyle(color: Colors.white, fontSize: 15)),
-              ),
+              const SizedBox(height: 12),
             ],
-          ),
-        );
-      },
+
+            CustomInput(
+              controller: widget.emailCtrl,
+              hint: 'G-mail',
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 20),
+
+            ElevatedButton(
+              onPressed: _sending ? null : _enviar,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor:
+                    AppColors.primary.withOpacity(0.6),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: _sending
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2.5, color: Colors.white))
+                  : const Text('Enviar enlace',
+                      style:
+                          TextStyle(color: Colors.white, fontSize: 15)),
+            ),
+          ],
+
+          const SizedBox(height: 8),
+        ],
+      ),
     );
   }
 }

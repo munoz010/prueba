@@ -72,6 +72,17 @@ class AuthService {
     }
   }
 
+  // ── RECUPERAR CONTRASEÑA ────────────────────────────────────────────
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+    } on FirebaseAuthException catch (e) {
+      throw _mapError(e);
+    } catch (e) {
+      throw 'Error inesperado: $e';
+    }
+  }
+
   // ── CERRAR SESIÓN ───────────────────────────────────────────────────
   Future<void> signOut() => _auth.signOut();
 
