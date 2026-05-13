@@ -84,10 +84,12 @@ class _AuthScreenState extends State<AuthScreen> {
         email: _loginEmail.text,
         password: _loginPassword.text,
       );
-      // ✅ NO navegamos aquí. El AuthWrapper en main.dart detecta el cambio
-      // de sesión de Firebase y navega automáticamente a /home.
+      // Navegamos explícitamente porque AuthScreen está apilado
+      // encima del AuthWrapper con Navigator.push desde SplashScreen
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+      }
     } catch (e) {
-      // Credenciales incorrectas → alerta roja
       if (mounted) _showAlert('error', 'G.mail/Contraseña incorrectos');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -116,9 +118,13 @@ class _AuthScreenState extends State<AuthScreen> {
         firstName: _regFirstName.text,
         lastName: _regLastName.text,
       );
-      // ✅ Mostramos la alerta verde brevemente.
-      // El AuthWrapper detecta la sesión y navega solo a /home.
-      if (mounted) _showAlert('success', 'Registrado con éxitó');
+      if (mounted) {
+        _showAlert('success', 'Registrado con éxitó');
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+        }
+      }
     } catch (e) {
       if (mounted) _showAlert('error', 'Error al registrarse. Intenta de nuevo.');
     } finally {

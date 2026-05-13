@@ -10,6 +10,8 @@ import 'models/incidencia_model.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  // Cierra sesión automáticamente al iniciar la app
+  await FirebaseAuth.instance.signOut();
   runApp(const TriAlertApp());
 }
 
@@ -25,9 +27,9 @@ class TriAlertApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE53935)),
         useMaterial3: true,
       ),
-      initialRoute: '/',
+      // home en vez de initialRoute para evitar conflicto con AuthWrapper
+      home: const AuthWrapper(),
       routes: {
-        '/':       (_) => const AuthWrapper(),
         '/splash': (_) => const SplashScreen(),
         '/home':   (_) => const MainShell(),
       },
@@ -53,7 +55,7 @@ class AuthWrapper extends StatelessWidget {
       stream: AuthService().authStateChanges,
       builder: (context, snapshot) {
 
-        // Cargando — esperamos a que Firebase responda
+        // ── 1. Esperando respuesta de Firebase ───────────────────────
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Color(0xFF030D24),
@@ -63,12 +65,12 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // Firebase respondió — hay usuario activo → Home
+        // ── 2. Hay sesión activa → MainShell ─────────────────────────
         if (snapshot.hasData && snapshot.data != null) {
           return const MainShell();
         }
 
-        // Firebase respondió — no hay sesión → Splash / Login
+        // ── 3. Sin sesión → SplashScreen (Login) ─────────────────────
         return const SplashScreen();
       },
     );
