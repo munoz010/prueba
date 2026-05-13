@@ -3,7 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'services/auth_service.dart';
 import 'screens/splash_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_shell.dart';
+import 'screens/detalle_incidencia_screen.dart';
+import 'models/incidencia_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,21 +25,45 @@ class TriAlertApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFE53935)),
         useMaterial3: true,
       ),
-      home: const AuthWrapper(),
+      initialRoute: '/',
+      routes: {
+        '/':       (_) => const AuthWrapper(),
+        '/splash': (_) => const SplashScreen(),
+        '/home':   (_) => const MainShell(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/detalle') {
+          final inc = settings.arguments as IncidenciaModel;
+          return MaterialPageRoute(
+            builder: (_) => DetalleIncidenciaScreen(incidencia: inc),
+          );
+        }
+        return null;
+      },
     );
   }
 }
 
-/// Si el usuario ya tiene sesión activa → HomeScreen
-/// Si no → SplashScreen (con los botones de login/registro)
-class AuthWrapper extends StatelessWidget {
+/// Escucha el stream de Firebase Auth.
+/// ─ Si hay sesión activa  → MainShell  (sin acumular rutas)
+/// ─ Si no hay sesión      → SplashScreen
+/// Este widget es el ÚNICO responsable de la navegación post-login.
+/// auth_screen y splash_screen NO navegan después de autenticar.
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: AuthService().authStateChanges,
       builder: (context, snapshot) {
+
+        // ── Cargando estado inicial ──────────────────────────────────
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Color(0xFF030D24),
@@ -46,9 +72,28 @@ class AuthWrapper extends StatelessWidget {
             ),
           );
         }
+
+        // ── Usuario autenticado → ir a /home ─────────────────────────
         if (snapshot.hasData && snapshot.data != null) {
-          return const HomeScreen();
+          // Usamos addPostFrameCallback para navegar DESPUÉS de que
+          // el árbol de widgets termine de construirse, evitando
+          // el conflicto con la navegación del auth_screen.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.pushNamedAndRemoveUntil(
+                context, '/home', (_) => false);
+            }
+          });
+          // Mientras navega mostramos el spinner
+          return const Scaffold(
+            backgroundColor: Color(0xFF030D24),
+            body: Center(
+              child: CircularProgressIndicator(color: Color(0xFFE53935)),
+            ),
+          );
         }
+
+        // ── Sin sesión → SplashScreen ────────────────────────────────
         return const SplashScreen();
       },
     );

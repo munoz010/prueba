@@ -29,7 +29,7 @@ class SplashScreen extends StatelessWidget {
             ),
 
             // Silueta del globo terráqueo (fondo sutil)
-           /* Positioned(
+            Positioned(
               right: -60,
               top: MediaQuery.of(context).size.height * 0.15,
               child: Opacity(
@@ -47,7 +47,7 @@ class SplashScreen extends StatelessWidget {
                 ),
               ),
             ),
-*/
+
             SafeArea(
               child: Column(
                 children: [

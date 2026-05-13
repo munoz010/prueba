@@ -4,7 +4,6 @@ import '../utils/app_colors.dart';
 import '../utils/validators.dart';
 import '../widgets/custom_input.dart';
 import '../widgets/tri_alert_logo.dart';
-import 'home_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   final int initialTab;
@@ -85,16 +84,11 @@ class _AuthScreenState extends State<AuthScreen> {
         email: _loginEmail.text,
         password: _loginPassword.text,
       );
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-          (_) => false,
-        );
-      }
-    } catch (_) {
+      // ✅ NO navegamos aquí. El AuthWrapper en main.dart detecta el cambio
+      // de sesión de Firebase y navega automáticamente a /home.
+    } catch (e) {
       // Credenciales incorrectas → alerta roja
-      _showAlert('error', 'G.mail/Contraseña incorrectos');
+      if (mounted) _showAlert('error', 'G.mail/Contraseña incorrectos');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -122,20 +116,11 @@ class _AuthScreenState extends State<AuthScreen> {
         firstName: _regFirstName.text,
         lastName: _regLastName.text,
       );
-      if (mounted) {
-        // Registro exitoso → alerta verde, luego navega
-        _showAlert('success', 'Registrado con éxitó');
-        await Future.delayed(const Duration(seconds: 2));
-        if (mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (_) => false,
-          );
-        }
-      }
-    } catch (_) {
-      _showAlert('error', 'Error al registrarse. Intenta de nuevo.');
+      // ✅ Mostramos la alerta verde brevemente.
+      // El AuthWrapper detecta la sesión y navega solo a /home.
+      if (mounted) _showAlert('success', 'Registrado con éxitó');
+    } catch (e) {
+      if (mounted) _showAlert('error', 'Error al registrarse. Intenta de nuevo.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
