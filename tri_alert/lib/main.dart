@@ -44,26 +44,16 @@ class TriAlertApp extends StatelessWidget {
   }
 }
 
-/// Escucha el stream de Firebase Auth.
-/// ─ Si hay sesión activa  → MainShell  (sin acumular rutas)
-/// ─ Si no hay sesión      → SplashScreen
-/// Este widget es el ÚNICO responsable de la navegación post-login.
-/// auth_screen y splash_screen NO navegan después de autenticar.
-class AuthWrapper extends StatefulWidget {
+class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
-  @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
-}
-
-class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: AuthService().authStateChanges,
       builder: (context, snapshot) {
 
-        // ── Cargando estado inicial ──────────────────────────────────
+        // Cargando — esperamos a que Firebase responda
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Color(0xFF030D24),
@@ -73,27 +63,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
         }
 
-        // ── Usuario autenticado → ir a /home ─────────────────────────
+        // Firebase respondió — hay usuario activo → Home
         if (snapshot.hasData && snapshot.data != null) {
-          // Usamos addPostFrameCallback para navegar DESPUÉS de que
-          // el árbol de widgets termine de construirse, evitando
-          // el conflicto con la navegación del auth_screen.
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.pushNamedAndRemoveUntil(
-                context, '/home', (_) => false);
-            }
-          });
-          // Mientras navega mostramos el spinner
-          return const Scaffold(
-            backgroundColor: Color(0xFF030D24),
-            body: Center(
-              child: CircularProgressIndicator(color: Color(0xFFE53935)),
-            ),
-          );
+          return const MainShell();
         }
 
-        // ── Sin sesión → SplashScreen ────────────────────────────────
+        // Firebase respondió — no hay sesión → Splash / Login
         return const SplashScreen();
       },
     );
