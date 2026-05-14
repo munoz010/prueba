@@ -236,7 +236,6 @@ class _DetalleIncidenciaScreenState
         ],
       ),
 
-      // NavBar igual al del MainShell pero con home activo
       bottomNavigationBar: Container(
         height: 70,
         decoration: const BoxDecoration(
@@ -246,8 +245,10 @@ class _DetalleIncidenciaScreenState
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
+            // Home — vuelve al MainShell en tab 0
             GestureDetector(
-              onTap: () => Navigator.pop(context),
+              onTap: () => Navigator.pushNamedAndRemoveUntil(
+                  context, '/home', (_) => false),
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -256,14 +257,26 @@ class _DetalleIncidenciaScreenState
                     color: AppColors.primary, size: 26),
               ),
             ),
-            Container(
-              width: 52, height: 52,
-              decoration: const BoxDecoration(
-                  color: Color(0xFF3A2D9A), shape: BoxShape.circle),
-              child: const Icon(Icons.add, color: Colors.white, size: 26),
+            // + Agregar — va al MainShell en tab 1
+            GestureDetector(
+              onTap: () => Navigator.pushNamedAndRemoveUntil(
+                  context, '/home', (_) => false,
+                  arguments: 1),
+              child: Container(
+                width: 52, height: 52,
+                decoration: const BoxDecoration(
+                    color: Color(0xFF3A2D9A), shape: BoxShape.circle),
+                child: const Icon(Icons.add, color: Colors.white, size: 26),
+              ),
             ),
-            const Icon(Icons.bar_chart_rounded,
-                color: Colors.white60, size: 26),
+            // Estadísticas — va al MainShell en tab 2
+            GestureDetector(
+              onTap: () => Navigator.pushNamedAndRemoveUntil(
+                  context, '/home', (_) => false,
+                  arguments: 2),
+              child: const Icon(Icons.bar_chart_rounded,
+                  color: Colors.white60, size: 26),
+            ),
           ],
         ),
       ),

@@ -28,6 +28,16 @@ class _MainShellState extends State<MainShell> {
     EstadisticasScreen(),
   ];
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Leer tab inicial si viene desde detalle_incidencia
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is int) {
+      setState(() => _navIndex = args);
+    }
+  }
+
   void _onNavTap(int index) => setState(() => _navIndex = index);
 
   Future<void> _cerrarSesion() async {
@@ -134,4 +144,7 @@ class _MainShellState extends State<MainShell> {
       ),
     );
   }
+
+  String _trunc(String s, int max) =>
+      s.length > max ? '${s.substring(0, max)}...' : s;
 }
