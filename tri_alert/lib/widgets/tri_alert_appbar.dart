@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 import '../utils/app_images.dart';
 
-/// AppBar global de TriAlert
 class TriAlertAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onMenuTap;
 
@@ -20,23 +19,12 @@ class TriAlertAppBar extends StatelessWidget implements PreferredSizeWidget {
         icon: const Icon(Icons.menu, color: Colors.white, size: 26),
         onPressed: onMenuTap,
       ),
-      title: Image.network(
-        AppImages.logoTexto,
-        height: 30,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const Text(
-          'TriAlert',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+      title: AppImages.logoTexto(height: 30),
       centerTitle: true,
       actions: [
         IconButton(
-          icon: const Icon(Icons.notifications_none, color: Colors.white, size: 26),
+          icon: const Icon(Icons.notifications_none,
+              color: Colors.white, size: 26),
           onPressed: () {},
         ),
       ],
@@ -44,7 +32,6 @@ class TriAlertAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// NavBar global — los 3 botones siempre visibles
 class TriAlertNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -69,8 +56,8 @@ class TriAlertNavBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _NavBtn(icon: Icons.home_rounded,    index: 0, current: currentIndex, onTap: onTap),
-          _NavBtn(icon: Icons.add,             index: 1, current: currentIndex, onTap: onTap, isCenter: true),
+          _NavBtn(icon: Icons.home_rounded,     index: 0, current: currentIndex, onTap: onTap),
+          _NavBtn(icon: Icons.add,              index: 1, current: currentIndex, onTap: onTap, isCenter: true),
           _NavBtn(icon: Icons.bar_chart_rounded, index: 2, current: currentIndex, onTap: onTap),
         ],
       ),

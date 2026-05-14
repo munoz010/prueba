@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_images.dart';
 import '../utils/validators.dart';
 import '../widgets/custom_input.dart';
 import '../widgets/app_logo.dart';
@@ -138,25 +139,20 @@ class _AuthScreenState extends State<AuthScreen> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      body: Container(
+      body: SizedBox(
+        width: size.width,
         height: size.height,
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0, -0.2),
-            radius: 1.2,
-            colors: [
-              Color(0xFF0D2B6B),
-              Color(0xFF071640),
-              Color(0xFF030D24),
-            ],
-          ),
-        ),
         child: Stack(
+          fit: StackFit.expand,
           children: [
-            // Rayos de fondo (decorativos)
-            Positioned.fill(
-              child: CustomPaint(painter: _RaysBg()),
+            // ── IMAGEN DE FONDO ──────────────────────────────
+            AppImages.fondoLogin(
+              width: size.width,
+              height: size.height,
+              fit: BoxFit.cover,
             ),
+            // Overlay oscuro
+            Container(color: Colors.black.withOpacity(0.45)),
 
             Column(
               children: [

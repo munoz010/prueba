@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_images.dart';
 import '../widgets/app_logo.dart';
 import 'auth_screen.dart';
 
@@ -8,61 +9,41 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0, -0.2),
-            radius: 1.2,
-            colors: [
-              Color(0xFF0D2B6B),
-              Color(0xFF071640),
-              Color(0xFF030D24),
-            ],
-          ),
-        ),
+      body: SizedBox(
+        width: size.width,
+        height: size.height,
         child: Stack(
+          fit: StackFit.expand,
           children: [
-            // Rayos de luz de fondo
-            Positioned.fill(
-              child: CustomPaint(painter: _RaysPainter()),
+            // ── IMAGEN DE FONDO (cubre toda la pantalla) ─────────
+            AppImages.fondoLogin(
+              width: size.width,
+              height: size.height,
+              fit: BoxFit.cover,
             ),
 
-            // Silueta del globo terráqueo (fondo sutil)
-            Positioned(
-              right: -60,
-              top: MediaQuery.of(context).size.height * 0.15,
-              child: Opacity(
-                opacity: 0.12,
-                child: Container(
-                  width: 320,
-                  height: 320,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.blueAccent,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            // ── OVERLAY OSCURO ────────────────────────────────────
+            Container(color: Colors.black.withOpacity(0.35)),
 
+            // ── CONTENIDO ─────────────────────────────────────────
             SafeArea(
               child: Column(
                 children: [
                   const Spacer(flex: 2),
 
-                  // ── LOGO COMPLETO (icono + texto) desde PNG ───
+                  // Logo completo con fondo transparente
                   AppLogo(
                     type: LogoType.completo,
-                    width: MediaQuery.of(context).size.width,
-                    height: MediaQuery.of(context).size.height * 0.45,
+                    width: size.width,
+                    height: size.height * 0.40,
                   ),
 
                   const Spacer(flex: 3),
 
-                  // ── BOTÓN INICIAR SESIÓN ──────────────────────
+                  // Botón Iniciar sesión
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: SizedBox(
@@ -93,7 +74,7 @@ class SplashScreen extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // ── LINK REGISTRARSE ──────────────────────────
+                  // Link Registrarse
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -135,30 +116,4 @@ class SplashScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Pinta los rayos de luz de fondo
-class _RaysPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF1565C0).withOpacity(0.08)
-      ..strokeWidth = 1.5;
-
-    final center = Offset(size.width / 2, size.height * 0.38);
-    const rays = 18;
-    for (int i = 0; i < rays; i++) {
-      final angle = (i / rays) * 2 * 3.14159;
-      final dx = center.dx + size.width * 1.2 * (0.5 * (i % 2 == 0 ? 1 : 0.7)) * 
-                  (i < rays / 2 ? 1 : -1) * (i % 3 == 0 ? 0.8 : 1);
-      final dy = center.dy + size.height * 0.9 * (i / rays - 0.5);
-      canvas.drawLine(center, Offset(
-        center.dx + (size.width) * (angle < 3.14 ? 1 : -1),
-        center.dy + size.height,
-      ), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_) => false;
 }
