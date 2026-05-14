@@ -1,12 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
 import '../models/incidencia_model.dart';
 import '../services/auth_service.dart';
 import '../services/incidencia_service.dart';
 import '../utils/app_colors.dart';
 
-/// Solo el contenido del formulario de agregar incidencia.
-/// El Scaffold, AppBar, Drawer y NavBar los provee MainShell.
 class AddIncidenciaScreen extends StatefulWidget {
   const AddIncidenciaScreen({super.key});
 
@@ -18,13 +19,16 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
   final _formKey      = GlobalKey<FormState>();
   final _incService   = IncidenciaService();
   final _authService  = AuthService();
+  final _picker       = ImagePicker();
 
   final _tituloCtrl      = TextEditingController();
   final _descripcionCtrl = TextEditingController();
   final _ubicacionCtrl   = TextEditingController();
 
   String? _tipoSeleccionado;
-  bool    _guardando = false;
+  File?   _fotoSeleccionada;
+  bool    _guardando    = false;
+  bool    _subiendoFoto = false;
 
   String? _alertType;
   String? _alertMsg;
@@ -42,13 +46,84 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
     super.dispose();
   }
 
-  void _showAlert(String type, String msg) {
-    setState(() { _alertType = type; _alertMsg = msg; });
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() { _alertType = null; _alertMsg = null; });
-    });
+  // ── SELECCIONAR FOTO ────────────────────────────────────────────────
+  void _mostrarOpcionesFoto() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Seleccionar fotografía',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Colors.white),
+                title: const Text('Tomar foto', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _seleccionarFoto(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.white),
+                title: const Text('Elegir de galería', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _seleccionarFoto(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
+  Future<void> _seleccionarFoto(ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(
+        source: source,
+        imageQuality: 75,
+        maxWidth: 1024,
+      );
+      if (picked != null) {
+        setState(() => _fotoSeleccionada = File(picked.path));
+      }
+    } catch (e) {
+      _showAlert('error', 'Error al seleccionar foto: $e');
+    }
+  }
+
+  // ── SUBIR FOTO A FIREBASE STORAGE ───────────────────────────────────
+  Future<String?> _subirFoto() async {
+    if (_fotoSeleccionada == null) return null;
+    setState(() => _subiendoFoto = true);
+    try {
+      final uid      = _authService.currentUser?.uid ?? 'unknown';
+      final nombre   = '${uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final ref      = FirebaseStorage.instance.ref('incidencias/$nombre');
+      await ref.putFile(_fotoSeleccionada!);
+      final url = await ref.getDownloadURL();
+      return url;
+    } catch (e) {
+      _showAlert('error', 'Error al subir foto: $e');
+      return null;
+    } finally {
+      if (mounted) setState(() => _subiendoFoto = false);
+    }
+  }
+
+  // ── REPORTAR ────────────────────────────────────────────────────────
   Future<void> _reportar() async {
     if (_tipoSeleccionado == null) {
       _showAlert('warning', 'Selecciona el tipo de incidente.');
@@ -58,27 +133,51 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
       _showAlert('warning', 'Faltan campos por llenar.');
       return;
     }
+    if (_fotoSeleccionada == null) {
+      _showAlert('warning', 'La fotografía es obligatoria.');
+      return;
+    }
+
     setState(() => _guardando = true);
     try {
+      // Subir foto y obtener URL
+      final fotoUrl = await _subirFoto();
+
       final uid = _authService.currentUser?.uid ?? '';
       final inc = IncidenciaModel(
-        id: '', tipo: _tipoSeleccionado!,
-        titulo: _tituloCtrl.text.trim(),
+        id:          '',
+        tipo:        _tipoSeleccionado!,
+        titulo:      _tituloCtrl.text.trim(),
         descripcion: _descripcionCtrl.text.trim(),
-        ubicacion: _ubicacionCtrl.text.trim(),
-        estado: 'Reportado', fecha: DateTime.now(), usuarioId: uid,
+        ubicacion:   _ubicacionCtrl.text.trim(),
+        estado:      'Reportado',
+        fecha:       DateTime.now(),
+        usuarioId:   uid,
+        fotoUrl:     fotoUrl,
       );
       await _incService.crear(inc);
+
       _showAlert('success', 'Incidencia reportada con éxito');
       _tituloCtrl.clear();
       _descripcionCtrl.clear();
       _ubicacionCtrl.clear();
-      setState(() => _tipoSeleccionado = null);
+      setState(() {
+        _tipoSeleccionado  = null;
+        _fotoSeleccionada  = null;
+      });
     } catch (e) {
       _showAlert('error', 'Error al reportar: $e');
     } finally {
       if (mounted) setState(() => _guardando = false);
     }
+  }
+
+  // ── ALERTAS ─────────────────────────────────────────────────────────
+  void _showAlert(String type, String msg) {
+    setState(() { _alertType = type; _alertMsg = msg; });
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) setState(() { _alertType = null; _alertMsg = null; });
+    });
   }
 
   @override
@@ -94,27 +193,23 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Título de sección ──────────────────────────────
+            // Título sección
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 10),
-              child: Row(
-                children: [
-                  Text('Agregar Incidencia',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold)),
-                ],
-              ),
+              child: Text('Agregar Incidencia',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
             ),
 
-            // ── Alerta ────────────────────────────────────────
+            // Alerta
             if (_alertType != null) ...[
               _AlertBanner(type: _alertType!, msg: _alertMsg!),
               const SizedBox(height: 10),
             ],
 
-            // ── Tipo ──────────────────────────────────────────
+            // Tipo
             const _Label('Tipo de incidente*'),
             _DropdownField(
               value: _tipoSeleccionado,
@@ -124,7 +219,7 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
             ),
             const SizedBox(height: 12),
 
-            // ── Título ────────────────────────────────────────
+            // Título
             _HomeInput(
               controller: _tituloCtrl,
               hint: 'Título de la incidencia*',
@@ -133,7 +228,7 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
             ),
             const SizedBox(height: 12),
 
-            // ── Descripción ───────────────────────────────────
+            // Descripción
             const _Label('Descripcion detallada*'),
             _HomeInput(
               controller: _descripcionCtrl,
@@ -144,38 +239,61 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
             ),
             const SizedBox(height: 12),
 
-            // ── Foto ──────────────────────────────────────────
+            // Foto
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const _Label('Fotografia detallada*'),
-                Text('Seleccionar',
-                    style: TextStyle(
-                        color: AppColors.primary, fontSize: 13)),
+                const _Label('Fotografía detallada*'),
+                TextButton(
+                  onPressed: _mostrarOpcionesFoto,
+                  child: const Text('Seleccionar',
+                      style: TextStyle(color: AppColors.primary, fontSize: 13)),
+                ),
               ],
             ),
-            Container(
-              width: double.infinity, height: 120,
-              decoration: BoxDecoration(
-                color: AppColors.inputHomeBg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: AppColors.inputHomeBorder,
-                    style: BorderStyle.solid),
-              ),
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.upload, color: Colors.white38, size: 36),
-                  SizedBox(height: 6),
-                  Text('Obligatorio',
-                      style: TextStyle(color: Colors.white38, fontSize: 13)),
-                ],
+            GestureDetector(
+              onTap: _mostrarOpcionesFoto,
+              child: Container(
+                width: double.infinity,
+                height: 160,
+                decoration: BoxDecoration(
+                  color: AppColors.inputHomeBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _fotoSeleccionada != null
+                        ? AppColors.successLight
+                        : AppColors.inputHomeBorder,
+                    width: _fotoSeleccionada != null ? 2 : 1,
+                  ),
+                ),
+                child: _subiendoFoto
+                    ? const Center(
+                        child: CircularProgressIndicator(color: AppColors.primary))
+                    : _fotoSeleccionada != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Image.file(
+                              _fotoSeleccionada!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                            ),
+                          )
+                        : const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_a_photo_outlined,
+                                  color: Colors.white38, size: 40),
+                              SizedBox(height: 8),
+                              Text('Toca para tomar o subir foto',
+                                  style: TextStyle(
+                                      color: Colors.white38, fontSize: 13)),
+                            ],
+                          ),
               ),
             ),
             const SizedBox(height: 12),
 
-            // ── Ubicación ─────────────────────────────────────
+            // Ubicación
             _HomeInput(
               controller: _ubicacionCtrl,
               hint: 'Ingrese ubicacion(Ej: Bloque 2 - sala 204)',
@@ -186,27 +304,25 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
             ),
             const SizedBox(height: 14),
 
-            // ── Fecha y Hora ──────────────────────────────────
-            Row(
-              children: [
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [const _Label('Fecha'), _ReadBox(fecha)],
-                )),
-                const SizedBox(width: 12),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [const _Label('Hora'), _ReadBox(hora)],
-                )),
-              ],
-            ),
+            // Fecha y Hora
+            Row(children: [
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [const _Label('Fecha'), _ReadBox(fecha)],
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [const _Label('Hora'), _ReadBox(hora)],
+              )),
+            ]),
             const SizedBox(height: 24),
 
-            // ── Botón Reportar ────────────────────────────────
+            // Botón Reportar
             SizedBox(
               width: double.infinity, height: 52,
               child: ElevatedButton(
-                onPressed: _guardando ? null : _reportar,
+                onPressed: (_guardando || _subiendoFoto) ? null : _reportar,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -215,12 +331,13 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
                       borderRadius: BorderRadius.circular(30)),
                   elevation: 3,
                 ),
-                child: _guardando
+                child: (_guardando || _subiendoFoto)
                     ? const SizedBox(width: 22, height: 22,
                         child: CircularProgressIndicator(
                             strokeWidth: 2.5, color: Colors.white))
                     : const Text('Reportar',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -232,8 +349,7 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
 
 // ── Widgets auxiliares ─────────────────────────────────────────────────
 class _AlertBanner extends StatelessWidget {
-  final String type;
-  final String msg;
+  final String type, msg;
   const _AlertBanner({required this.type, required this.msg});
 
   @override
@@ -250,7 +366,8 @@ class _AlertBanner extends StatelessWidget {
       child: Row(children: [
         Icon(icon, color: Colors.white, size: 20),
         const SizedBox(width: 10),
-        Expanded(child: Text(msg, style: const TextStyle(color: Colors.white, fontSize: 14))),
+        Expanded(child: Text(msg,
+            style: const TextStyle(color: Colors.white, fontSize: 14))),
       ]),
     );
   }

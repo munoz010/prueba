@@ -9,8 +9,9 @@ class EstadisticasScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: IncidenciaService().estadisticas(),
+    // ✅ StreamBuilder — se actualiza automáticamente en tiempo real
+    return StreamBuilder<Map<String, dynamic>>(
+      stream: IncidenciaService().streamEstadisticas(),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -35,7 +36,6 @@ class EstadisticasScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Título sección ─────────────────────────────────
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 10),
                 child: Text('Estadísticas',
@@ -45,7 +45,7 @@ class EstadisticasScreen extends StatelessWidget {
                         fontWeight: FontWeight.bold)),
               ),
 
-              // ── Total ──────────────────────────────────────────
+              // ── Total ─────────────────────────────────────────
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -74,7 +74,7 @@ class EstadisticasScreen extends StatelessWidget {
               ),
               const SizedBox(height: 14),
 
-              // ── Por estado ─────────────────────────────────────
+              // ── Por estado ────────────────────────────────────
               Row(children: [
                 _StatCard(value: '$reportados', label: 'Reportados',
                     bg: const Color(0xFF8B1A1A), textColor: AppColors.primary),
@@ -87,7 +87,7 @@ class EstadisticasScreen extends StatelessWidget {
               ]),
               const SizedBox(height: 16),
 
-              // ── Por tipo ───────────────────────────────────────
+              // ── Por tipo ──────────────────────────────────────
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),

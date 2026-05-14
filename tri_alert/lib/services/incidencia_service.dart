@@ -33,32 +33,30 @@ class IncidenciaService {
     await _col.doc(id).delete();
   }
 
-  // ── ESTADÍSTICAS ────────────────────────────────────────────────────
-  Future<Map<String, dynamic>> estadisticas() async {
-    final snap = await _col.get();
-    final lista =
-        snap.docs.map((d) => IncidenciaModel.fromMap(d.data(), d.id)).toList();
+  // ── ESTADÍSTICAS en tiempo real ─────────────────────────────────────
+  Stream<Map<String, dynamic>> streamEstadisticas() {
+    return _col.snapshots().map((snap) {
+      final lista = snap.docs
+          .map((d) => IncidenciaModel.fromMap(d.data(), d.id))
+          .toList();
 
-    final total = lista.length;
-    final reportados =
-        lista.where((i) => i.estado == 'Reportado').length;
-    final enProgreso =
-        lista.where((i) => i.estado == 'En Progreso').length;
-    final resueltos =
-        lista.where((i) => i.estado == 'Resuelto').length;
+      final total      = lista.length;
+      final reportados = lista.where((i) => i.estado == 'Reportado').length;
+      final enProgreso = lista.where((i) => i.estado == 'En Progreso').length;
+      final resueltos  = lista.where((i) => i.estado == 'Resuelto').length;
 
-    // Conteo por tipo
-    final Map<String, int> porTipo = {};
-    for (final i in lista) {
-      porTipo[i.tipo] = (porTipo[i.tipo] ?? 0) + 1;
-    }
+      final Map<String, int> porTipo = {};
+      for (final i in lista) {
+        porTipo[i.tipo] = (porTipo[i.tipo] ?? 0) + 1;
+      }
 
-    return {
-      'total': total,
-      'reportados': reportados,
-      'enProgreso': enProgreso,
-      'resueltos': resueltos,
-      'porTipo': porTipo,
-    };
+      return {
+        'total':      total,
+        'reportados': reportados,
+        'enProgreso': enProgreso,
+        'resueltos':  resueltos,
+        'porTipo':    porTipo,
+      };
+    });
   }
 }

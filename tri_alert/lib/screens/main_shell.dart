@@ -92,17 +92,21 @@ class _MainShellState extends State<MainShell> {
                     child: const Icon(Icons.person, color: Colors.white, size: 28),
                   ),
                   const SizedBox(width: 14),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Bienvenido',
-                          style: TextStyle(color: Colors.white70, fontSize: 12)),
-                      Text(_trunc(nombre, 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Bienvenido',
+                            style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        Text(
+                          nombre.split(' ').first,
                           style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
-                              fontWeight: FontWeight.bold)),
-                    ],
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
