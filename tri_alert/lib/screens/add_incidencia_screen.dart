@@ -26,7 +26,8 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
   final _ubicacionCtrl   = TextEditingController();
 
   String? _tipoSeleccionado;
-  File?   _fotoSeleccionada;
+  File?   _fotoSeleccionada;  // original
+  File?   _fotoThumb;          // thumbnail 150px
   bool    _guardando    = false;
   bool    _subiendoFoto = false;
 
@@ -91,33 +92,57 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
 
   Future<void> _seleccionarFoto(ImageSource source) async {
     try {
-      final picked = await _picker.pickImage(
+      // ── Original (buena calidad para ver en detalle) ───────────────
+      final original = await _picker.pickImage(
         source: source,
         imageQuality: 75,
         maxWidth: 1024,
       );
-      if (picked != null) {
-        setState(() => _fotoSeleccionada = File(picked.path));
-      }
+      if (original == null) return;
+
+      // ── Thumbnail (baja calidad para lista, carga rápida) ──────────
+      final thumb = await _picker.pickImage(
+        source: source,
+        imageQuality: 25,
+        maxWidth: 150,
+        maxHeight: 150,
+      );
+
+      setState(() {
+        _fotoSeleccionada = File(original.path);
+        _fotoThumb        = thumb != null ? File(thumb.path) : null;
+      });
     } catch (e) {
       _showAlert('error', 'Error al seleccionar foto: $e');
     }
   }
 
-  // ── SUBIR FOTO A FIREBASE STORAGE ───────────────────────────────────
-  Future<String?> _subirFoto() async {
-    if (_fotoSeleccionada == null) return null;
+  // ── SUBIR FOTO A FIREBASE STORAGE (original + thumbnail) ───────────
+  Future<Map<String, String?>> _subirFotos() async {
+    if (_fotoSeleccionada == null) return {'original': null, 'thumb': null};
     setState(() => _subiendoFoto = true);
     try {
-      final uid      = _authService.currentUser?.uid ?? 'unknown';
-      final nombre   = '${uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final ref      = FirebaseStorage.instance.ref('incidencias/$nombre');
-      await ref.putFile(_fotoSeleccionada!);
-      final url = await ref.getDownloadURL();
-      return url;
+      final uid    = _authService.currentUser?.uid ?? 'unknown';
+      final nombre = '${uid}_${DateTime.now().millisecondsSinceEpoch}';
+
+      // ── 1. Subir imagen original (buena calidad) ───────────────────
+      final origRef = FirebaseStorage.instance
+          .ref('incidencias/orig_$nombre.jpg');
+      await origRef.putFile(_fotoSeleccionada!);
+      final origUrl = await origRef.getDownloadURL();
+
+      // ── 2. Subir thumbnail (150px, baja calidad) ─────────────────────
+      String? thumbUrl;
+      final fotoParaThumb = _fotoThumb ?? _fotoSeleccionada!;
+      final thumbRef = FirebaseStorage.instance
+          .ref('incidencias/thumb_$nombre.jpg');
+      await thumbRef.putFile(fotoParaThumb);
+      thumbUrl = await thumbRef.getDownloadURL();
+
+      return {'original': origUrl, 'thumb': thumbUrl};
     } catch (e) {
       _showAlert('error', 'Error al subir foto: $e');
-      return null;
+      return {'original': null, 'thumb': null};
     } finally {
       if (mounted) setState(() => _subiendoFoto = false);
     }
@@ -140,20 +165,21 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
 
     setState(() => _guardando = true);
     try {
-      // Subir foto y obtener URL
-      final fotoUrl = await _subirFoto();
+      // Subir foto original + thumbnail
+      final fotos = await _subirFotos();
 
       final uid = _authService.currentUser?.uid ?? '';
       final inc = IncidenciaModel(
-        id:          '',
-        tipo:        _tipoSeleccionado!,
-        titulo:      _tituloCtrl.text.trim(),
-        descripcion: _descripcionCtrl.text.trim(),
-        ubicacion:   _ubicacionCtrl.text.trim(),
-        estado:      'Reportado',
-        fecha:       DateTime.now(),
-        usuarioId:   uid,
-        fotoUrl:     fotoUrl,
+        id:           '',
+        tipo:         _tipoSeleccionado!,
+        titulo:       _tituloCtrl.text.trim(),
+        descripcion:  _descripcionCtrl.text.trim(),
+        ubicacion:    _ubicacionCtrl.text.trim(),
+        estado:       'Reportado',
+        fecha:        DateTime.now(),
+        usuarioId:    uid,
+        fotoUrl:      fotos['original'],
+        fotoThumbUrl: fotos['thumb'],
       );
       await _incService.crear(inc);
 
@@ -164,6 +190,7 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
       setState(() {
         _tipoSeleccionado  = null;
         _fotoSeleccionada  = null;
+        _fotoThumb         = null;
       });
     } catch (e) {
       _showAlert('error', 'Error al reportar: $e');
@@ -186,30 +213,27 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
     final fecha = DateFormat('dd/MM/yyyy').format(ahora);
     final hora  = DateFormat('HH:mm').format(ahora);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Título sección
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 10),
-              child: Text('Agregar Incidencia',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
-            ),
+    return Stack(
+      children: [
+        // ── CONTENIDO PRINCIPAL ────────────────────────────────────
+        SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Título sección
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Text('Agregar Incidencia',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold)),
+                ),
 
-            // Alerta
-            if (_alertType != null) ...[
-              _AlertBanner(type: _alertType!, msg: _alertMsg!),
-              const SizedBox(height: 10),
-            ],
-
-            // Tipo
+                // Tipo
             const _Label('Tipo de incidente*'),
             _DropdownField(
               value: _tipoSeleccionado,
@@ -340,10 +364,21 @@ class _AddIncidenciaScreenState extends State<AddIncidenciaScreen> {
                             fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
-          ],
-        ),
-      ),
-    );
+              ],             // cierra children del Column
+            ),               // cierra Column
+          ),                 // cierra Form
+        ),                   // cierra SingleChildScrollView
+
+        // ── BANNER FLOTANTE (encima del contenido) ─────────────────
+        if (_alertType != null)
+          Positioned(
+            top: 8,
+            left: 16,
+            right: 16,
+            child: _AlertBanner(type: _alertType!, msg: _alertMsg!),
+          ),
+      ],                     // cierra children del Stack
+    );                       // cierra Stack
   }
 }
 

@@ -22,6 +22,16 @@ class _DetalleIncidenciaScreenState
   bool _guardando = false;
   final List<String> _estados = ['Reportado', 'En Progreso', 'Resuelto'];
 
+  String? _alertType;
+  String? _alertMsg;
+
+  void _showAlert(String type, String msg) {
+    setState(() { _alertType = type; _alertMsg = msg; });
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) setState(() { _alertType = null; _alertMsg = null; });
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -34,19 +44,15 @@ class _DetalleIncidenciaScreenState
       await _incService.actualizarEstado(
           widget.incidencia.id, _estadoSeleccionado);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Estado actualizado correctamente'),
-          backgroundColor: AppColors.success,
-        ));
-        // Vuelve al MainShell (home)
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+        _showAlert('success', 'Actualizado con éxito');
+        // Espera que el usuario vea la alerta y vuelve al home
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+        }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: AppColors.error));
-      }
+      if (mounted) _showAlert('error', 'Error: $e');
     } finally {
       if (mounted) setState(() => _guardando = false);
     }
@@ -84,7 +90,9 @@ class _DetalleIncidenciaScreenState
         ],
       ),
 
-      body: SingleChildScrollView(
+      body: Stack(
+        children: [
+          SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,6 +224,16 @@ class _DetalleIncidenciaScreenState
             ]),
           ],
         ),
+          ),
+          // ── BANNER FLOTANTE ────────────────────────────────────
+          if (_alertType != null)
+            Positioned(
+              top: 8,
+              left: 16,
+              right: 16,
+              child: _buildAlertBanner(),
+            ),
+        ],
       ),
 
       // NavBar igual al del MainShell pero con home activo
@@ -249,6 +267,26 @@ class _DetalleIncidenciaScreenState
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAlertBanner() {
+    Color bg; IconData icon;
+    switch (_alertType) {
+      case 'error':   bg = const Color(0xFFD32F2F); icon = Icons.error_outline; break;
+      case 'warning': bg = const Color(0xFF795B00); icon = Icons.warning_amber_rounded; break;
+      default:        bg = const Color(0xFF1B5E20); icon = Icons.check_circle_outline;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+          color: bg, borderRadius: BorderRadius.circular(10)),
+      child: Row(children: [
+        Icon(icon, color: Colors.white, size: 20),
+        const SizedBox(width: 10),
+        Expanded(child: Text(_alertMsg ?? '',
+            style: const TextStyle(color: Colors.white, fontSize: 14))),
+      ]),
     );
   }
 

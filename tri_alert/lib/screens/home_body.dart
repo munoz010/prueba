@@ -154,14 +154,25 @@ class _IncidenciaCard extends StatelessWidget {
               decoration: BoxDecoration(
                   color: Colors.white12,
                   borderRadius: BorderRadius.circular(12)),
-              child: inc.fotoUrl != null
+              // ✅ Thumbnail en lista (carga rápida)
+              child: (inc.fotoThumbUrl ?? inc.fotoUrl) != null
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.network(inc.fotoUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.camera_alt,
-                                  color: Colors.white24, size: 30)))
+                      child: Image.network(
+                        inc.fotoThumbUrl ?? inc.fotoUrl!,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (ctx, child, progress) =>
+                            progress == null
+                                ? child
+                                : const Center(
+                                    child: SizedBox(
+                                      width: 20, height: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white24))),
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.camera_alt,
+                                color: Colors.white24, size: 30)))
                   : const Icon(Icons.camera_alt,
                       color: Colors.white24, size: 30),
             ),
