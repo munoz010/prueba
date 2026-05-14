@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import '../utils/app_colors.dart';
 import '../utils/app_images.dart';
 
@@ -21,17 +20,16 @@ class TriAlertAppBar extends StatelessWidget implements PreferredSizeWidget {
         icon: const Icon(Icons.menu, color: Colors.white, size: 26),
         onPressed: onMenuTap,
       ),
-      title: ShaderMask(
-        shaderCallback: (bounds) => const LinearGradient(
-          colors: [Color(0xFF64B5F6), Colors.white, Color(0xFF64B5F6)],
-        ).createShader(bounds),
-        child: const Text(
+      title: Image.network(
+        AppImages.logoTexto,
+        height: 30,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const Text(
           'TriAlert',
           style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
             color: Colors.white,
-            fontStyle: FontStyle.italic,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
