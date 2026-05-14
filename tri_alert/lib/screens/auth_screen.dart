@@ -4,7 +4,6 @@ import '../utils/app_colors.dart';
 import '../utils/validators.dart';
 import '../widgets/custom_input.dart';
 import '../widgets/app_logo.dart';
-import '../widgets/tri_alert_logo.dart';
 
 class AuthScreen extends StatefulWidget {
   final int initialTab;
@@ -178,7 +177,10 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                         Expanded(
                           child: Center(
-                            child: TriAlertLogo(size: size.width * 0.42),
+                            child: AppLogo(
+                              type: LogoType.icono,
+                              width: size.width * 0.52,
+                            ),
                           ),
                         ),
                       ],

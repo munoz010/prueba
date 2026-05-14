@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
-import '../widgets/tri_alert_logo.dart';
 import '../widgets/app_logo.dart';
 import 'auth_screen.dart';
 
@@ -54,25 +53,10 @@ class SplashScreen extends StatelessWidget {
                 children: [
                   const Spacer(flex: 2),
 
-                  // ── LOGO ──────────────────────────────────────
-                  const TriAlertLogo(size: 200),
-
-                  const SizedBox(height: 24),
-
-                  // ── NOMBRE DE LA APP ──────────────────────────
-                  ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [Color(0xFF64B5F6), Colors.white, Color(0xFF64B5F6)],
-                    ).createShader(bounds),
-                    child: const Text(
-                      'TriAlert',
-                      style: TextStyle(
-                        fontSize: 42,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 2,
-                      ),
-                    ),
+                  // ── LOGO COMPLETO (icono + texto) desde PNG ───
+                  AppLogo(
+                    type: LogoType.completo,
+                    width: MediaQuery.of(context).size.width * 0.75,
                   ),
 
                   const Spacer(flex: 3),
