@@ -56,7 +56,8 @@ class SplashScreen extends StatelessWidget {
                   // ── LOGO COMPLETO (icono + texto) desde PNG ───
                   AppLogo(
                     type: LogoType.completo,
-                    width: MediaQuery.of(context).size.width * 0.75,
+                    width: MediaQuery.of(context).size.width,
+                    height: MediaQuery.of(context).size.height * 0.45,
                   ),
 
                   const Spacer(flex: 3),
