@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import '../utils/app_colors.dart';
+import '../utils/app_images.dart';
 
 /// AppBar global de TriAlert
 class TriAlertAppBar extends StatelessWidget implements PreferredSizeWidget {

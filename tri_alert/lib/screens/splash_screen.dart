@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 import '../widgets/tri_alert_logo.dart';
+import '../widgets/app_logo.dart';
 import 'auth_screen.dart';
 
 class SplashScreen extends StatelessWidget {

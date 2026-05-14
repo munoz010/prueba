@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import '../utils/app_colors.dart';
 import '../utils/validators.dart';
 import '../widgets/custom_input.dart';
+import '../widgets/app_logo.dart';
 import '../widgets/tri_alert_logo.dart';
 
 class AuthScreen extends StatefulWidget {
