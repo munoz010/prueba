@@ -109,24 +109,53 @@ class _DetalleIncidenciaScreenState
             _InfoBox(inc.descripcion, minLines: 3),
             const SizedBox(height: 10),
 
-            // Foto
+            // Foto — toca para ver en pantalla completa (imagen original)
             const _Label('Fotografia detallada*'),
-            Container(
-              width: double.infinity, height: 160,
-              decoration: BoxDecoration(
-                color: AppColors.inputHomeBg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.inputHomeBorder),
-              ),
-              child: inc.fotoUrl != null
-                  ? ClipRRect(
+            GestureDetector(
+              onTap: inc.fotoUrl != null
+                  ? () => _abrirImagenCompleta(inc.fotoUrl!)
+                  : null,
+              child: Stack(
+                children: [
+                  Container(
+                    width: double.infinity, height: 160,
+                    decoration: BoxDecoration(
+                      color: AppColors.inputHomeBg,
                       borderRadius: BorderRadius.circular(14),
-                      child: Image.network(inc.fotoUrl!, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Center(child: Icon(Icons.broken_image,
-                                  color: Colors.white24, size: 48))))
-                  : const Center(child: Icon(Icons.camera_alt,
-                      color: Colors.white24, size: 48)),
+                      border: Border.all(color: AppColors.inputHomeBorder),
+                    ),
+                    child: inc.fotoUrl != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Image.network(
+                              inc.fotoThumbUrl ?? inc.fotoUrl!,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (ctx, child, progress) =>
+                                  progress == null ? child :
+                                  const Center(child: CircularProgressIndicator(
+                                      color: AppColors.primary, strokeWidth: 2)),
+                              errorBuilder: (_, __, ___) =>
+                                  const Center(child: Icon(Icons.broken_image,
+                                      color: Colors.white24, size: 48))))
+                        : const Center(child: Icon(Icons.camera_alt,
+                            color: Colors.white24, size: 48)),
+                  ),
+                  // Ícono de lupa para indicar que se puede ampliar
+                  if (inc.fotoUrl != null)
+                    Positioned(
+                      bottom: 8, right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.zoom_in,
+                            color: Colors.white, size: 18),
+                      ),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 10),
 
@@ -283,6 +312,16 @@ class _DetalleIncidenciaScreenState
     );
   }
 
+  // Abre la imagen original en pantalla completa
+  void _abrirImagenCompleta(String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _ImagenCompletaScreen(url: url),
+      ),
+    );
+  }
+
   Widget _buildAlertBanner() {
     Color bg; IconData icon;
     switch (_alertType) {
@@ -340,3 +379,68 @@ class _InfoBox extends StatelessWidget {
         style: const TextStyle(color: Colors.white, fontSize: 14)),
   );
 }
+
+
+// ── PANTALLA DE IMAGEN COMPLETA ────────────────────────────────────────
+class _ImagenCompletaScreen extends StatelessWidget {
+  final String url;
+  const _ImagenCompletaScreen({required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Fotografía',
+            style: TextStyle(color: Colors.white, fontSize: 16)),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          // Permite hacer zoom con los dedos
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: Image.network(
+            url,
+            fit: BoxFit.contain,
+            loadingBuilder: (ctx, child, progress) {
+              if (progress == null) return child;
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: progress.expectedTotalBytes != null
+                          ? progress.cumulativeBytesLoaded /
+                              progress.expectedTotalBytes!
+                          : null,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Cargando imagen...',
+                        style: TextStyle(color: Colors.white54, fontSize: 13)),
+                  ],
+                ),
+              );
+            },
+            errorBuilder: (_, __, ___) => const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.broken_image, color: Colors.white38, size: 64),
+                SizedBox(height: 12),
+                Text('No se pudo cargar la imagen',
+                    style: TextStyle(color: Colors.white38)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
