@@ -698,23 +698,4 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
   }
 }
 
-class _RaysBg extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF1565C0).withOpacity(0.06)
-      ..strokeWidth = 1;
-    final center = Offset(size.width / 2, size.height * 0.3);
-    for (int i = 0; i < 20; i++) {
-      final t = i / 20;
-      canvas.drawLine(
-        center,
-        Offset(size.width * t, size.height * 0.7),
-        paint,
-      );
-    }
-  }
 
-  @override
-  bool shouldRepaint(_) => false;
-}
