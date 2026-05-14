@@ -117,11 +117,15 @@ class _IncidenciaCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('#$numero ${_trunc(inc.titulo, 22)}',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15)),
+                  Text(
+                    '#$numero ${inc.titulo}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 6),
                   Row(children: [
                     Container(
@@ -142,9 +146,15 @@ class _IncidenciaCard extends StatelessWidget {
                     const Icon(Icons.location_on_outlined,
                         color: Colors.white38, size: 14),
                     const SizedBox(width: 4),
-                    Text(_trunc(inc.ubicacion, 24),
+                    Expanded(
+                      child: Text(
+                        inc.ubicacion,
                         style: const TextStyle(
-                            color: Colors.white54, fontSize: 12)),
+                            color: Colors.white54, fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ]),
                 ],
               ),
